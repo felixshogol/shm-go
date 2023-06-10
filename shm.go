@@ -1,77 +1,79 @@
 package main
 
+/*
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include "shm-client/shmh/dfxp_shm_common.h"
+#include "shm-client/shmh/dfxp_shm_client.h"
+
+*/
+import "C"
 import (
 	"flag"
 	"fmt"
-	"os"
 
 	shmclient "dflux.io/shm-go/shm-client"
-	"github.com/golang/glog"
+	"github.com/sirupsen/logrus"
 )
 
-func init() {
-	flag.Usage = usage
-	flag.Set("logtostderr", "true")
-	flag.Set("stderrthreshold", "WARNING")
-}
-
-func usage() {
-	fmt.Print("@@@@@@@@@")
-	flag.PrintDefaults()
-	os.Exit(2)
-}
-
-var shmCfg = shmclient.ShmConfig  {}
+var shmCfg = shmclient.ShmConfig{}
 
 func main() {
 	var err error
 	cmdPtr := flag.Int("cmdFlag", int(0), "shm cmd")
-
 	flag.Parse()
 
 	shmclient := shmclient.NewShmClient()
 	cmdname := shmclient.GetShmCmdName(*cmdPtr)
-	
-	glog.Infof("shmcmd:%d:%s", *cmdPtr, cmdname)
+
+	logrus.Infof("shmcmd:%d:%s", *cmdPtr, cmdname)
 
 	err = shmclient.ShmCmdValidation(*cmdPtr)
 	if err != nil {
+		logrus.Errorf("shm validation failed.Err:%v", err)
+		return
 	}
 	err = shmclient.InitShm()
 	if err != nil {
-		glog.Errorf("Err:%v", err)
+		logrus.Errorf("shm Init failed.Err:%v", err)
+		return
+	}
+
+	err = configShm(*cmdPtr, &shmCfg)
+	if err != nil {
+		logrus.Errorf("shm config failed. Err:%v", err)
 		return
 	}
 
 	err = shmclient.ShmRunCmd(*cmdPtr, &shmCfg)
 	if err != nil {
-		glog.Errorf("Failed to run shm cmd.Err :%v",err)
+		logrus.Errorf("Failed to run shm cmd.Err :%v", err)
 	}
 
+}
 
-	// glog.Info("Write start to shm")
-	// err = shmclient.ShmWriteSart()
-	// if err != nil {
-	// 	glog.Errorf("start Err:%v", err)
-	// 	return
-	// }
+func configShm(cmd int, cfg *shmclient.ShmConfig) error {
 
-	// time.Sleep(1 * time.Second)
+	shmcmd := C.dfxp_shm_cmd(cmd)
 
-	// glog.Info("Write stop to shm")
-	// err = shmclient.ShmWriteStop()
-	// if err != nil {
-	// 	glog.Errorf("stop Err:%v", err)
-	// 	return
-	// }
-	// time.Sleep(1 * time.Second)
+	logrus.Infof("configShm.cmd:%d", shmcmd)
+	switch shmcmd {
+	case C.DFXP_SHM_CMD_CONFIG_TRAFFIC:
+		traffic := &shmclient.ShmConfigTraffic{}
+		cfg.CfgTraffic = traffic
+	case C.DFXP_SHM_CMD_CONFIG_PORTS:
+		ports := &shmclient.ShmConfigPorts{}
+		cfg.CfgPorts = ports
+	case C.DFXP_SHM_CMD_ADD_IP_GTP:
+		tunnels := &shmclient.ShmConfigTunnels{}
+		cfg.CfgTunnels = tunnels
+	case C.DFXP_SHM_CMD_DEL_IP_GTP:
+		tunnels := &shmclient.ShmConfigTunnels{}
+		cfg.CfgTunnels = tunnels
 
-	// glog.Info("Write shutdown to shm")
-	// err = shmclient.ShmWriteShutdown()
-	// if err != nil {
-	// 	glog.Errorf("shutdown Err:%v", err)
-	// 	return
-	// }
-	// time.Sleep(1 * time.Second)
-
+	default:
+		fmt.Errorf("Wrong shm config cmd:%d", cmd)
+	}
+	return nil
 }

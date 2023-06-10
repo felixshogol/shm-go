@@ -14,11 +14,23 @@ import "C"
 import (
 	"fmt"
 
-	"github.com/golang/glog"
+	"github.com/sirupsen/logrus"
 )
 
+type ShmConfigTraffic struct {
+}
+
+type ShmConfigPorts struct {
+}
+
+type ShmConfigTunnels struct {
+}
+
 type ShmConfig struct {
-	cmd int
+	Cmd        int
+	CfgTraffic *ShmConfigTraffic
+	CfgPorts   *ShmConfigPorts
+	CfgTunnels *ShmConfigTunnels
 }
 
 type ShmClient struct {
@@ -54,26 +66,31 @@ func (shmClient *ShmClient) ShmCmdValidation(cmd int) error {
 }
 
 func (shmClient *ShmClient) ShmRunCmd(cmd int, cfg *ShmConfig) error {
+	
 	switch C.dfxp_shm_cmd(cmd) {
 	case C.DFXP_SHM_CMD_NONE:
 	case C.DFXP_SHM_CMD_CONFIG_TRAFFIC:
-		cfg.cmd = int(C.DFXP_SHM_CMD_CONFIG_TRAFFIC)
+		cfg.Cmd = int(C.DFXP_SHM_CMD_CONFIG_TRAFFIC)
 		return shmClient.ShmWrite(cfg)
 	case C.DFXP_SHM_CMD_CONFIG_PORTS:
-		cfg.cmd = int(C.DFXP_SHM_CMD_CONFIG_PORTS)
+		cfg.Cmd = int(C.DFXP_SHM_CMD_CONFIG_PORTS)
 		return shmClient.ShmWrite(cfg)
 	case C.DFXP_SHM_CMD_START:
-		cfg.cmd = int(C.DFXP_SHM_CMD_START)
+		cfg.Cmd = int(C.DFXP_SHM_CMD_START)
 		return shmClient.ShmWrite(cfg)
 	case C.DFXP_SHM_CMD_STOP:
-		cfg.cmd = int(C.DFXP_SHM_CMD_STOP)
+		cfg.Cmd = int(C.DFXP_SHM_CMD_STOP)
 		return shmClient.ShmWrite(cfg)
 
 	case C.DFXP_SHM_CMD_SHUTDOWN:
-		cfg.cmd = int(C.DFXP_SHM_CMD_SHUTDOWN)
+		cfg.Cmd = int(C.DFXP_SHM_CMD_SHUTDOWN)
 		return shmClient.ShmWrite(cfg)
 	case C.DFXP_SHM_CMD_ADD_IP_GTP:
+		cfg.Cmd = int(C.DFXP_SHM_CMD_ADD_IP_GTP)
+		return shmClient.ShmWrite(cfg)
 	case C.DFXP_SHM_CMD_DEL_IP_GTP:
+		cfg.Cmd = int(C.DFXP_SHM_CMD_DEL_IP_GTP)
+		return shmClient.ShmWrite(cfg)
 	case C.DFXP_SHM_CMD_GET_STATS:
 
 	default:
@@ -83,7 +100,6 @@ func (shmClient *ShmClient) ShmRunCmd(cmd int, cfg *ShmConfig) error {
 }
 
 func (shmclient *ShmClient) InitShm() error {
-	glog.Info("InitShm")
 
 	shmn := C.CString("/dfxp-shm")
 	ret := C.ShmInit(shmn, 2, 0)
@@ -116,9 +132,10 @@ func (shmclient *ShmClient) ShmWrite(cfg *ShmConfig) error {
 	shmcfg := &C.dfxp_shm_t{}
 	//cdata := C.GoBytes(unsafe.Pointer(shmcfg), C.sizeof_dfxp_shm_t)
 
-	shmcfg.cmd = C.dfxp_shm_cmd(cfg.cmd)
+	shmcfg.cmd = C.dfxp_shm_cmd(cfg.Cmd)
+	shmcfg.status = C.DFXP_SHM_STATUS_WRITTEN_BY_CLIENT
 
-	glog.Infof("Write cmd:%d", shmcfg.cmd)
+	logrus.Infof("Write cmd:%d", shmcfg.cmd)
 	ret := C.ShmWrite(shmcfg)
 	if ret != 0 {
 		return fmt.Errorf("ShmWrite failed")
