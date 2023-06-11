@@ -13,6 +13,7 @@ package shmclient
 import "C"
 import (
 	"fmt"
+	"unsafe"
 
 	"github.com/sirupsen/logrus"
 )
@@ -27,10 +28,8 @@ type ShmConfigTunnels struct {
 }
 
 type ShmConfig struct {
-	Cmd        int
-	CfgTraffic *ShmConfigTraffic
-	CfgPorts   *ShmConfigPorts
-	CfgTunnels *ShmConfigTunnels
+	Cmd int
+	Cfg C.dfxp_shm_t
 }
 
 type ShmClient struct {
@@ -38,6 +37,44 @@ type ShmClient struct {
 
 func NewShmClient() *ShmClient {
 	return &ShmClient{}
+}
+
+func (shmClient *ShmClient) DumpCfg(shmcfg * ShmConfig) {
+	logrus.Infof("###  DumpCfg:")
+	logrus.Infof("ShmCfg clen:%d", C.ShmSizeofCfg())
+	// cfg := (*C.dfxp_shm_t)(unsafe.Pointer(&shmcfg.Cfg))
+	// traffic := (*C.dfxp_traffic_config_t) (unsafe.Pointer(&cfg.value[0])) 
+	shmClient.DumpTraffic(shmcfg)
+
+}
+
+func (shmClient *ShmClient) DumpTraffic(shmcfg * ShmConfig) {
+	cfg := (*C.dfxp_shm_t)(unsafe.Pointer(&shmcfg.Cfg))
+	traffic := (*C.dfxp_traffic_config_t) (unsafe.Pointer(&cfg.value[0])) 
+
+	logrus.Infof("### Traffic required:")
+	logrus.Infof("Traffic len:%d clen:%d", unsafe.Sizeof(*traffic),C.ShmSizeofTraffic())
+	logrus.Infof("server:%t", bool(traffic.server))
+	logrus.Infof("duration:%dsec", int(traffic.duration))
+	logrus.Infof("cps:%d", int(traffic.cps))
+	logrus.Infof("listen:%d", int(traffic.listen))
+	logrus.Infof("listen num:%d", int(traffic.listen_num))
+	logrus.Infof("cpu_num:%d", int(traffic.cpu_num))
+	for i := 0; i <int(traffic.cpu_num); i++  {
+		logrus.Info("cpu:",C.int(traffic.cpu[i]))
+	}
+	logrus.Infof("cc:%d", int(traffic.cc))
+
+}
+
+func (shmClient *ShmClient) DumpPorts(shmcfg * ShmConfig) {
+	cfg := (*C.dfxp_shm_t)(unsafe.Pointer(&shmcfg.Cfg))
+	ports := (*C.dfxp_ports_t) (unsafe.Pointer(&cfg.value[1])) 
+	ports.port_num = C.int(1)
+	logrus.Infof("### Ports :")
+	logrus.Infof("Ports len:%d clen:%d", unsafe.Sizeof(*ports),C.ShmSizeofPorts())
+	logrus.Infof("port_num:%d", int(ports.port_num))
+
 }
 
 func (shmclient *ShmClient) GetShmCmdName(cmd int) string {
@@ -66,7 +103,7 @@ func (shmClient *ShmClient) ShmCmdValidation(cmd int) error {
 }
 
 func (shmClient *ShmClient) ShmRunCmd(cmd int, cfg *ShmConfig) error {
-	
+
 	switch C.dfxp_shm_cmd(cmd) {
 	case C.DFXP_SHM_CMD_NONE:
 	case C.DFXP_SHM_CMD_CONFIG_TRAFFIC:
