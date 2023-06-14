@@ -39,43 +39,71 @@ func NewShmClient() *ShmClient {
 	return &ShmClient{}
 }
 
-func (shmClient *ShmClient) DumpCfg(shmcfg * ShmConfig) {
+func (shmClient *ShmClient) DumpCfg(shmcfg *ShmConfig) {
 	logrus.Infof("###  DumpCfg:")
 	logrus.Infof("ShmCfg clen:%d", C.ShmSizeofCfg())
 	// cfg := (*C.dfxp_shm_t)(unsafe.Pointer(&shmcfg.Cfg))
-	// traffic := (*C.dfxp_traffic_config_t) (unsafe.Pointer(&cfg.value[0])) 
+	// traffic := (*C.dfxp_traffic_config_t) (unsafe.Pointer(&cfg.value[0]))
 	shmClient.DumpTraffic(shmcfg)
 
 }
 
-func (shmClient *ShmClient) DumpTraffic(shmcfg * ShmConfig) {
+func (shmClient *ShmClient) DumpTraffic(shmcfg *ShmConfig) {
 	cfg := (*C.dfxp_shm_t)(unsafe.Pointer(&shmcfg.Cfg))
-	traffic := (*C.dfxp_traffic_config_t) (unsafe.Pointer(&cfg.value[0])) 
+	traffic := (*C.dfxp_traffic_config_t)(unsafe.Pointer(&cfg.cfgTraffic))
 
 	logrus.Infof("### Traffic required:")
-	logrus.Infof("Traffic len:%d clen:%d", unsafe.Sizeof(*traffic),C.ShmSizeofTraffic())
+	logrus.Infof("Traffic len:%d clen:%d", unsafe.Sizeof(*traffic), C.ShmSizeofTraffic())
 	logrus.Infof("server:%t", bool(traffic.server))
 	logrus.Infof("duration:%dsec", int(traffic.duration))
 	logrus.Infof("cps:%d", int(traffic.cps))
 	logrus.Infof("listen:%d", int(traffic.listen))
 	logrus.Infof("listen num:%d", int(traffic.listen_num))
 	logrus.Infof("cpu_num:%d", int(traffic.cpu_num))
-	for i := 0; i <int(traffic.cpu_num); i++  {
-		logrus.Info("cpu:",C.int(traffic.cpu[i]))
+	for i := 0; i < int(traffic.cpu_num); i++ {
+		logrus.Info("cpu:", C.int(traffic.cpu[i]))
 	}
 	logrus.Infof("cc:%d", int(traffic.cc))
 
 }
 
-func (shmClient *ShmClient) DumpPorts(shmcfg * ShmConfig) {
+func (shmClient *ShmClient) DumpPorts(shmcfg *ShmConfig) {
+
 	cfg := (*C.dfxp_shm_t)(unsafe.Pointer(&shmcfg.Cfg))
-	ports := (*C.dfxp_ports_t) (unsafe.Pointer(&cfg.value[1])) 
-	ports.port_num = C.int(1)
+	ports := (*C.dfxp_ports_t)(unsafe.Pointer(&cfg.cfgPorts))
+
 	logrus.Infof("### Ports :")
-	logrus.Infof("Ports len:%d clen:%d", unsafe.Sizeof(*ports),C.ShmSizeofPorts())
+	logrus.Infof("Ports len:%d clen:%d", unsafe.Sizeof(*ports), C.ShmSizeofPorts())
 	logrus.Infof("port_num:%d", int(ports.port_num))
+	str := (*C.char)(unsafe.Pointer(&ports.ports[0].pci))
+	logrus.Infof("pci:%s", C.GoString(str))
+	str = (*C.char)(unsafe.Pointer(&ports.ports[0].server_ip))
+	logrus.Infof("server_ip:%s", C.GoString(str))
+	str = (*C.char)(unsafe.Pointer(&ports.ports[0].gateway_ip))
+	logrus.Infof("gateway_ip:%s", C.GoString(str))
+	str = (*C.char)(unsafe.Pointer(&ports.ports[0].local_ip))
+	logrus.Infof("local_ip:%s", C.GoString(str))
 
 }
+
+func (shmClient *ShmClient) DumpPorts1(cfg *C.dfxp_shm_t) {
+
+	ports := (*C.dfxp_ports_t)(unsafe.Pointer(&cfg.cfgPorts))
+
+	logrus.Infof("### DumpPorts1 Ports :")
+	logrus.Infof("Ports len:%d clen:%d", unsafe.Sizeof(*ports), C.ShmSizeofPorts())
+	logrus.Infof("port_num:%d", int(ports.port_num))
+	str := (*C.char)(unsafe.Pointer(&ports.ports[0].pci))
+	logrus.Infof("pci:%s", C.GoString(str))
+	str = (*C.char)(unsafe.Pointer(&ports.ports[0].server_ip))
+	logrus.Infof("server_ip:%s", C.GoString(str))
+	str = (*C.char)(unsafe.Pointer(&ports.ports[0].gateway_ip))
+	logrus.Infof("gateway_ip:%s", C.GoString(str))
+	str = (*C.char)(unsafe.Pointer(&ports.ports[0].local_ip))
+	logrus.Infof("local_ip:%s", C.GoString(str))
+
+}
+
 
 func (shmclient *ShmClient) GetShmCmdName(cmd int) string {
 	cmdstr := C.ShmGetCmdName(C.dfxp_shm_cmd(cmd))
@@ -168,11 +196,17 @@ func (shmclient *ShmClient) ShmWrite(cfg *ShmConfig) error {
 
 	// shmcfg := &C.dfxp_shm_t{}
 	//cdata := C.GoBytes(unsafe.Pointer(shmcfg), C.sizeof_dfxp_shm_t)
-	shmcfg := &cfg.Cfg
+	shmcfg :=(*C.dfxp_shm_t)(unsafe.Pointer(&cfg.Cfg))
+
+	// shmcfg := &cfg.Cfg
 	shmcfg.cmd = C.dfxp_shm_cmd(cfg.Cmd)
 	shmcfg.status = C.DFXP_SHM_STATUS_WRITTEN_BY_CLIENT
 
 	logrus.Infof("Write cmd:%d", shmcfg.cmd)
+	if  shmcfg.cmd  == C.DFXP_SHM_CMD_CONFIG_PORTS{
+		shmclient.DumpPorts1(shmcfg)
+		
+	}
 	ret := C.ShmWrite(shmcfg)
 	if ret != 0 {
 		return fmt.Errorf("ShmWrite failed")
