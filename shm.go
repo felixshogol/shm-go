@@ -78,8 +78,10 @@ func configShm(client *shmclient.ShmClient, cmd int /*cfg *C.dfxp_shm_t*/, shmcf
 		traffic.listen_num = C.int(1)
 		traffic.cps = C.int(50000) // 50k
 		traffic.cpu[0] = C.int(1)
-		traffic.cpu[1] = C.int(20)
-		traffic.cpu_num = C.int(2)
+		traffic.cpu_num = C.int(1)
+		traffic.lport_min = C.int(1000)
+		traffic.lport_max = C.int(1010)
+
 		client.DumpTraffic(shmcfg)
 
 	case C.DFXP_SHM_CMD_CONFIG_PORTS:

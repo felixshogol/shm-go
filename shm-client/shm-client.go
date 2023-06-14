@@ -166,9 +166,9 @@ func (shmclient *ShmClient) ShmWriteConfig(cfg *ShmConfig) error {
 
 func (shmclient *ShmClient) ShmWrite(cfg *ShmConfig) error {
 
-	shmcfg := &C.dfxp_shm_t{}
+	// shmcfg := &C.dfxp_shm_t{}
 	//cdata := C.GoBytes(unsafe.Pointer(shmcfg), C.sizeof_dfxp_shm_t)
-
+	shmcfg := &cfg.Cfg
 	shmcfg.cmd = C.dfxp_shm_cmd(cfg.Cmd)
 	shmcfg.status = C.DFXP_SHM_STATUS_WRITTEN_BY_CLIENT
 
