@@ -74,19 +74,6 @@ func configShm(client *shmclient.ShmClient, cmd int, shmcfg *shmclient.ShmConfig
 		if err != nil {
 			return err
 		}
-		// //required
-		// traffic := (*C.dfxp_traffic_config_t)(unsafe.Pointer(&cfg.value[0]))
-		// traffic.duration = C.int(120) // seconds
-		// traffic.server = C.bool(false)
-		// traffic.listen = C.int(5678)
-		// traffic.listen_num = C.int(1)
-		// traffic.cps = C.int(50000) // 50k
-		// traffic.cpu[0] = C.int(1)
-		// traffic.cpu_num = C.int(1)
-		// traffic.lport_min = C.int(1000)
-		// traffic.lport_max = C.int(1010)
-
-
 		client.DumpTraffic(shmcfg)
 
 	case C.DFXP_SHM_CMD_CONFIG_PORTS:
@@ -119,8 +106,8 @@ func configTraffic(traffic *C.dfxp_traffic_config_t) error {
 		traffic.cps = C.int(50000) // 50k
 		traffic.cpu[0] = C.int(1)
 		traffic.cpu_num = C.int(1)
-		traffic.lport_min = C.int(1000)
-		traffic.lport_max = C.int(1010)
+		traffic.lport_min = C.int(2020)
+		traffic.lport_max = C.int(2030)
 
 		return nil
 }
