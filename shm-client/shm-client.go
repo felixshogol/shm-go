@@ -42,8 +42,6 @@ func NewShmClient() *ShmClient {
 func (shmClient *ShmClient) DumpCfg(shmcfg *ShmConfig) {
 	logrus.Infof("###  DumpCfg:")
 	logrus.Infof("ShmCfg clen:%d", C.ShmSizeofCfg())
-	// cfg := (*C.dfxp_shm_t)(unsafe.Pointer(&shmcfg.Cfg))
-	// traffic := (*C.dfxp_traffic_config_t) (unsafe.Pointer(&cfg.value[0]))
 	shmClient.DumpTraffic(shmcfg)
 
 }
@@ -86,11 +84,11 @@ func (shmClient *ShmClient) DumpPorts(shmcfg *ShmConfig) {
 
 }
 
-func (shmClient *ShmClient) DumpPorts1(cfg *C.dfxp_shm_t) {
+func (shmClient *ShmClient) DumpShmPorts(cfg *C.dfxp_shm_t) {
 
 	ports := (*C.dfxp_ports_t)(unsafe.Pointer(&cfg.cfgPorts))
 
-	logrus.Infof("### DumpPorts1 Ports :")
+	logrus.Infof("### Dump ShmPorts:")
 	logrus.Infof("Ports len:%d clen:%d", unsafe.Sizeof(*ports), C.ShmSizeofPorts())
 	logrus.Infof("port_num:%d", int(ports.port_num))
 	str := (*C.char)(unsafe.Pointer(&ports.ports[0].pci))
@@ -102,6 +100,25 @@ func (shmClient *ShmClient) DumpPorts1(cfg *C.dfxp_shm_t) {
 	str = (*C.char)(unsafe.Pointer(&ports.ports[0].local_ip))
 	logrus.Infof("local_ip:%s", C.GoString(str))
 
+}
+
+func (shmClient *ShmClient) DumpShmTunnels(cfg *C.dfxp_shm_t) {
+
+	tunnels := (*C.dfxp_shm_ip_gtps_t)(unsafe.Pointer(&cfg.cfgIpGtps))
+
+	logrus.Infof("### Dump ShmTunnels:")
+	logrus.Infof("Tunnels len:%d ", unsafe.Sizeof(*tunnels))
+	logrus.Infof("Tunnels num:%d", int(tunnels.num))
+
+	for idx := 0 ; idx < int(tunnels.num); idx ++ {
+		logrus.Infof("## Tunnels %d", idx)
+		str := (*C.char)(unsafe.Pointer(&tunnels.ip_gtp[idx].address))
+		upf:=  IntToIPv4(uint32((tunnels.ip_gtp[idx].tunnel.upf_ipv4)))
+		ue:=  IntToIPv4(uint32((tunnels.ip_gtp[idx].tunnel.ue_ipv4)))
+		teid_in:= uint32(tunnels.ip_gtp[idx].tunnel.teid_in)
+		teid_out:= uint32(tunnels.ip_gtp[idx].tunnel.teid_out)
+		logrus.Infof("address:%s upf:%s ue:%s teid_in:%d teid_out:%d",C.GoString(str),upf,ue,teid_in,teid_out)
+	}
 }
 
 
@@ -204,9 +221,14 @@ func (shmclient *ShmClient) ShmWrite(cfg *ShmConfig) error {
 
 	logrus.Infof("Write cmd:%d", shmcfg.cmd)
 	if  shmcfg.cmd  == C.DFXP_SHM_CMD_CONFIG_PORTS{
-		shmclient.DumpPorts1(shmcfg)
+		shmclient.DumpShmPorts(shmcfg)
 		
 	}
+	if  shmcfg.cmd  == C.DFXP_SHM_CMD_ADD_IP_GTP{
+		shmclient.DumpShmTunnels(shmcfg)
+		
+	}
+	//
 	ret := C.ShmWrite(shmcfg)
 	if ret != 0 {
 		return fmt.Errorf("ShmWrite failed")

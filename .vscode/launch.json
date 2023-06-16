@@ -12,7 +12,7 @@
             "program": "${fileDirname}"
             "asRoot": true
             "args": [
-                "-cmdFlag","2",
+                "-cmdFlag","6",
             ]
             
         }
