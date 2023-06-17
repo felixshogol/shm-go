@@ -94,10 +94,13 @@ func configShm(client *shmclient.ShmClient, cmd int, shmcfg *shmclient.ShmConfig
 		tunnels := (*C.dfxp_shm_ip_gtps_t)(unsafe.Pointer(&cfg.cfgIpGtps))
 		deleteTunnels(tunnels)
 
+	case C.DFXP_SHM_CMD_CLEAR_CONFIG:
+
 
 	default:
 		fmt.Errorf("Wrong shm config cmd:%d", cmd)
 	}
+	
 	return nil
 }
 

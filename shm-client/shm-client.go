@@ -110,17 +110,16 @@ func (shmClient *ShmClient) DumpShmTunnels(cfg *C.dfxp_shm_t) {
 	logrus.Infof("Tunnels len:%d ", unsafe.Sizeof(*tunnels))
 	logrus.Infof("Tunnels num:%d", int(tunnels.num))
 
-	for idx := 0 ; idx < int(tunnels.num); idx ++ {
+	for idx := 0; idx < int(tunnels.num); idx++ {
 		logrus.Infof("## Tunnels %d", idx)
 		str := (*C.char)(unsafe.Pointer(&tunnels.ip_gtp[idx].address))
-		upf:=  IntToIPv4(uint32((tunnels.ip_gtp[idx].tunnel.upf_ipv4)))
-		ue:=  IntToIPv4(uint32((tunnels.ip_gtp[idx].tunnel.ue_ipv4)))
-		teid_in:= uint32(tunnels.ip_gtp[idx].tunnel.teid_in)
-		teid_out:= uint32(tunnels.ip_gtp[idx].tunnel.teid_out)
-		logrus.Infof("address:%s upf:%s ue:%s teid_in:%d teid_out:%d",C.GoString(str),upf,ue,teid_in,teid_out)
+		upf := IntToIPv4(uint32((tunnels.ip_gtp[idx].tunnel.upf_ipv4)))
+		ue := IntToIPv4(uint32((tunnels.ip_gtp[idx].tunnel.ue_ipv4)))
+		teid_in := uint32(tunnels.ip_gtp[idx].tunnel.teid_in)
+		teid_out := uint32(tunnels.ip_gtp[idx].tunnel.teid_out)
+		logrus.Infof("address:%s upf:%s ue:%s teid_in:%d teid_out:%d", C.GoString(str), upf, ue, teid_in, teid_out)
 	}
 }
-
 
 func (shmclient *ShmClient) GetShmCmdName(cmd int) string {
 	cmdstr := C.ShmGetCmdName(C.dfxp_shm_cmd(cmd))
@@ -140,6 +139,7 @@ func (shmClient *ShmClient) ShmCmdValidation(cmd int) error {
 	case C.DFXP_SHM_CMD_ADD_IP_GTP:
 	case C.DFXP_SHM_CMD_DEL_IP_GTP:
 	case C.DFXP_SHM_CMD_GET_STATS:
+	case C.DFXP_SHM_CMD_CLEAR_CONFIG:
 
 	default:
 		fmt.Errorf("Wrong shm cmd:%d", cmd)
@@ -174,6 +174,12 @@ func (shmClient *ShmClient) ShmRunCmd(cmd int, cfg *ShmConfig) error {
 		cfg.Cmd = int(C.DFXP_SHM_CMD_DEL_IP_GTP)
 		return shmClient.ShmWrite(cfg)
 	case C.DFXP_SHM_CMD_GET_STATS:
+		cfg.Cmd = int(C.DFXP_SHM_CMD_GET_STATS)
+		return shmClient.ShmWrite(cfg)
+
+	case C.DFXP_SHM_CMD_CLEAR_CONFIG:
+		cfg.Cmd = int(C.DFXP_SHM_CMD_CLEAR_CONFIG)
+		return shmClient.ShmWrite(cfg)
 
 	default:
 		fmt.Errorf("Wrong shm cmd:%d", cmd)
@@ -213,20 +219,20 @@ func (shmclient *ShmClient) ShmWrite(cfg *ShmConfig) error {
 
 	// shmcfg := &C.dfxp_shm_t{}
 	//cdata := C.GoBytes(unsafe.Pointer(shmcfg), C.sizeof_dfxp_shm_t)
-	shmcfg :=(*C.dfxp_shm_t)(unsafe.Pointer(&cfg.Cfg))
+	shmcfg := (*C.dfxp_shm_t)(unsafe.Pointer(&cfg.Cfg))
 
 	// shmcfg := &cfg.Cfg
 	shmcfg.cmd = C.dfxp_shm_cmd(cfg.Cmd)
 	shmcfg.status = C.DFXP_SHM_STATUS_WRITTEN_BY_CLIENT
 
 	logrus.Infof("Write cmd:%d", shmcfg.cmd)
-	if  shmcfg.cmd  == C.DFXP_SHM_CMD_CONFIG_PORTS{
+	if shmcfg.cmd == C.DFXP_SHM_CMD_CONFIG_PORTS {
 		shmclient.DumpShmPorts(shmcfg)
-		
+
 	}
-	if  shmcfg.cmd  == C.DFXP_SHM_CMD_ADD_IP_GTP || shmcfg.cmd  == C.DFXP_SHM_CMD_DEL_IP_GTP {
+	if shmcfg.cmd == C.DFXP_SHM_CMD_ADD_IP_GTP || shmcfg.cmd == C.DFXP_SHM_CMD_DEL_IP_GTP {
 		shmclient.DumpShmTunnels(shmcfg)
-		
+
 	}
 	//
 	ret := C.ShmWrite(shmcfg)
