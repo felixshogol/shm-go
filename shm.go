@@ -67,8 +67,6 @@ func configShm(client *shmclient.ShmClient, cmd int, shmcfg *shmclient.ShmConfig
 	logrus.Infof("configShm.cmd:%d", shmcmd)
 	cfg := (*C.dfxp_shm_t)(unsafe.Pointer(&shmcfg.Cfg))
 
-	// client.DumpCfg(shmcfg)
-
 	switch shmcmd {
 	case C.DFXP_SHM_CMD_CONFIG_TRAFFIC:
 		traffic := (*C.dfxp_traffic_config_t)(unsafe.Pointer(&cfg.cfgTraffic))
@@ -93,8 +91,9 @@ func configShm(client *shmclient.ShmClient, cmd int, shmcfg *shmclient.ShmConfig
 		}
 
 	case C.DFXP_SHM_CMD_DEL_IP_GTP:
-		tunnels := *(*C.dfxp_shm_ip_gtps_t)(unsafe.Pointer(&cfg.cfgIpGtps))
-		tunnels.num = C.int(1)
+		tunnels := (*C.dfxp_shm_ip_gtps_t)(unsafe.Pointer(&cfg.cfgIpGtps))
+		deleteTunnels(tunnels)
+
 
 	default:
 		fmt.Errorf("Wrong shm config cmd:%d", cmd)
@@ -141,7 +140,6 @@ func configTunnels(tunnels *C.dfxp_shm_ip_gtps_t) error {
 	ue2str := "10.0.0.3"  
 	upfstr := "106.10.138.240"
 
-    //UE1
 	ue1 := (*C.char)(unsafe.Pointer(&tunnels.ip_gtp[0].address))
 	C.strcpy(ue1, (*C.char)(C.CString(ue1str)))
 
@@ -178,5 +176,21 @@ func configTunnels(tunnels *C.dfxp_shm_ip_gtps_t) error {
 	tunnels.ip_gtp[1].tunnel.teid_in = C.uint32_t(11)
 	tunnels.ip_gtp[1].tunnel.teid_out = C.uint32_t(1011)
 
+	return nil
+}
+
+func deleteTunnels(tunnels *C.dfxp_shm_ip_gtps_t) error {
+
+	tunnels.num = C.int(1)
+    ue1str := "10.0.0.1"  
+	//ue2str := "10.0.0.3"  
+
+	ue1 := (*C.char)(unsafe.Pointer(&tunnels.ip_gtp[0].address))
+	C.strcpy(ue1, (*C.char)(C.CString(ue1str)))
+
+	// ue2 := (*C.char)(unsafe.Pointer(&tunnels.ip_gtp[1].address))
+	// C.strcpy(ue2, (*C.char)(C.CString(ue2str)))
+
+	
 	return nil
 }

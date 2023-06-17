@@ -224,7 +224,7 @@ func (shmclient *ShmClient) ShmWrite(cfg *ShmConfig) error {
 		shmclient.DumpShmPorts(shmcfg)
 		
 	}
-	if  shmcfg.cmd  == C.DFXP_SHM_CMD_ADD_IP_GTP{
+	if  shmcfg.cmd  == C.DFXP_SHM_CMD_ADD_IP_GTP || shmcfg.cmd  == C.DFXP_SHM_CMD_DEL_IP_GTP {
 		shmclient.DumpShmTunnels(shmcfg)
 		
 	}
