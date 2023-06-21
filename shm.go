@@ -33,6 +33,7 @@ const (
 
 var shmCfg = shmclient.ShmConfig{}
 var gtpEnable bool = false
+var protocol uint8 = 17
 
 func main() {
 	var err error
@@ -77,6 +78,15 @@ func main() {
 			gtpEnable = false
 			continue
 		}
+		if text == "tcp" {
+			protocol = 6
+			continue
+		}
+		if text == "udp" {
+			protocol = 17
+			continue
+		}
+
 		cmd, err := strconv.Atoi(text)
 
 		if err != nil {
@@ -164,7 +174,7 @@ func configTraffic(traffic *C.dfxp_traffic_config_t, gtpenable bool) error {
 	} else {
 		traffic.gtpu_enable = false
 	}
-
+	traffic.protocol = C.uint8_t(protocol)
 	return nil
 }
 
@@ -270,6 +280,8 @@ func usage() {
 	fmt.Println("uage:")
 	fmt.Println("gtpenable - enable gtp")
 	fmt.Println("gtpdisable - disable gtp")
+	fmt.Println("tcp - protocol tcp")
+	fmt.Println("udp - protocol udp")
 	fmt.Println("quit- shm-go quit")
 	fmt.Println("1 - DFXP_SHM_CMD_CONFIG_TRAFFIC")
 	fmt.Println("2 - DFXP_SHM_CMD_CONFIG_PORTS")

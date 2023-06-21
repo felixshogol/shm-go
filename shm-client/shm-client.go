@@ -59,10 +59,11 @@ func (shmClient *ShmClient) DumpTraffic(shmcfg *ShmConfig) {
 	logrus.Infof("listen num:%d", int(traffic.listen_num))
 	logrus.Infof("cpu_num:%d", int(traffic.cpu_num))
 	for i := 0; i < int(traffic.cpu_num); i++ {
-		logrus.Info("cpu:", C.int(traffic.cpu[i]))
+		logrus.Info("cpu:", int(traffic.cpu[i]))
 	}
 	logrus.Infof("cc:%d", int(traffic.cc))
 	logrus.Infof("gtpenable:%t", traffic.gtpu_enable)
+	logrus.Infof("protocol:%d", traffic.protocol)
 
 }
 
@@ -113,12 +114,13 @@ func (shmClient *ShmClient) DumpShmTunnels(cfg *C.dfxp_shm_t) {
 
 	for idx := 0; idx < int(tunnels.num); idx++ {
 		logrus.Infof("## Tunnels %d", idx)
+		id:= uint32((tunnels.ip_gtp[idx].tunnel.id))
 		str := (*C.char)(unsafe.Pointer(&tunnels.ip_gtp[idx].address))
 		upf := IntToIPv4(uint32((tunnels.ip_gtp[idx].tunnel.upf_ipv4)))
 		ue := IntToIPv4(uint32((tunnels.ip_gtp[idx].tunnel.ue_ipv4)))
 		teid_in := uint32(tunnels.ip_gtp[idx].tunnel.teid_in)
 		teid_out := uint32(tunnels.ip_gtp[idx].tunnel.teid_out)
-		logrus.Infof("address:%s upf:%s ue:%s teid_in:%d teid_out:%d", C.GoString(str), upf, ue, teid_in, teid_out)
+		logrus.Infof("id:%d address:%s upf:%s ue:%s teid_in:%d teid_out:%d",id, C.GoString(str), upf, ue, teid_in, teid_out)
 	}
 }
 
