@@ -217,11 +217,7 @@ func (shmclient *ShmClient) ShmWriteConfig(cfg *ShmConfig) error {
 
 func (shmclient *ShmClient) ShmWrite(cfg *ShmConfig) error {
 
-	// shmcfg := &C.dfxp_shm_t{}
-	//cdata := C.GoBytes(unsafe.Pointer(shmcfg), C.sizeof_dfxp_shm_t)
 	shmcfg := (*C.dfxp_shm_t)(unsafe.Pointer(&cfg.Cfg))
-
-	// shmcfg := &cfg.Cfg
 	shmcfg.cmd = C.dfxp_shm_cmd(cfg.Cmd)
 	shmcfg.status = C.DFXP_SHM_STATUS_WRITTEN_BY_CLIENT
 
@@ -232,9 +228,8 @@ func (shmclient *ShmClient) ShmWrite(cfg *ShmConfig) error {
 	}
 	if shmcfg.cmd == C.DFXP_SHM_CMD_ADD_IP_GTP || shmcfg.cmd == C.DFXP_SHM_CMD_DEL_IP_GTP {
 		shmclient.DumpShmTunnels(shmcfg)
-
 	}
-	//
+	
 	ret := C.ShmWrite(shmcfg)
 	if ret != 0 {
 		return fmt.Errorf("ShmWrite failed")

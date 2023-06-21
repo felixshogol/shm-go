@@ -11,51 +11,83 @@ package main
 */
 import "C"
 import (
-	"flag"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 	"unsafe"
 
+	"bufio"
 	"net"
 
 	shmclient "dflux.io/shm-go/shm-client"
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	STR_EMPTY = "empty"
+	STR_QUIT  = "quit"
+)
+
 var shmCfg = shmclient.ShmConfig{}
 
 func main() {
 	var err error
-	cmdPtr := flag.Int("cmdFlag", int(0), "shm cmd")
-	flag.Parse()
+	//cmdPtr := flag.Int("cmdFlag", int(0), "shm cmd")
+	//flag.Parse()
 
 	logrus := logrus.New()
 
 	logrus.SetReportCaller(true)
 
 	shmclient := shmclient.NewShmClient()
-	cmdname := shmclient.GetShmCmdName(*cmdPtr)
+	//cmdname := shmclient.GetShmCmdName(*cmdPtr)
+	//logrus.Infof("shmcmd:%d:%s", *cmdPtr, cmdname)
 
-	logrus.Infof("shmcmd:%d:%s", *cmdPtr, cmdname)
-
-	err = shmclient.ShmCmdValidation(*cmdPtr)
-	if err != nil {
-		logrus.Errorf("shm validation failed.Err:%v", err)
-		return
-	}
 	err = shmclient.InitShm()
 	if err != nil {
 		logrus.Errorf("shm Init failed.Err:%v", err)
 		return
 	}
+	scanner := bufio.NewScanner(os.Stdin)
+	for {
+		text, err := scanConsole(scanner)
+		logrus.Info(text)
+		if err != nil {
+			logrus.Errorf("shm config failed. Err:%v", err)
+		}
+		if text == STR_EMPTY {
+			logrus.Warn("empty line")
+			usage ()
+			continue
+		}
+		if text == STR_QUIT {
+			logrus.Warn("shm-go quit")
+			
+			return
+		}
 
-	err = configShm(shmclient, *cmdPtr, &shmCfg)
-	if err != nil {
-		logrus.Errorf("shm config failed. Err:%v", err)
-		return
-	}
-	err = shmclient.ShmRunCmd(*cmdPtr, &shmCfg)
-	if err != nil {
-		logrus.Errorf("Failed to run shm cmd.Err :%v", err)
+		cmd, err := strconv.Atoi(text)
+
+		if err != nil {
+			fmt.Println("Error during conversion")
+			continue
+		}
+		err = shmclient.ShmCmdValidation( /**cmdPtr*/ cmd)
+		if err != nil {
+			logrus.Errorf("shm validation failed.Err:%v", err)
+			continue
+		}
+		err = configShm(shmclient /*cmdPtr*/, cmd, &shmCfg)
+		if err != nil {
+			logrus.Errorf("configShm failed.Err:%v", err)
+			continue
+		}
+		err = shmclient.ShmRunCmd( /**cmdPtr*/ cmd, &shmCfg)
+		if err != nil {
+			logrus.Errorf("Failed to run shm cmd.Err :%v", err)
+			continue
+		}
 	}
 
 }
@@ -95,12 +127,14 @@ func configShm(client *shmclient.ShmClient, cmd int, shmcfg *shmclient.ShmConfig
 		deleteTunnels(tunnels)
 
 	case C.DFXP_SHM_CMD_CLEAR_CONFIG:
+		logrus.Info("Clear dfxp config")
 
-
+	case C.DFXP_SHM_CMD_GET_STATS:
+		logrus.Info("Get statistics")
 	default:
 		fmt.Errorf("Wrong shm config cmd:%d", cmd)
 	}
-	
+
 	return nil
 }
 
@@ -139,8 +173,8 @@ func configPorts(ports *C.dfxp_ports_t) error {
 func configTunnels(tunnels *C.dfxp_shm_ip_gtps_t) error {
 
 	tunnels.num = C.int(2)
-    ue1str := "10.0.0.1"  
-	ue2str := "10.0.0.3"  
+	ue1str := "10.0.0.1"
+	ue2str := "10.0.0.3"
 	upfstr := "106.10.138.240"
 
 	ue1 := (*C.char)(unsafe.Pointer(&tunnels.ip_gtp[0].address))
@@ -154,8 +188,8 @@ func configTunnels(tunnels *C.dfxp_shm_ip_gtps_t) error {
 	if err != nil {
 		return err
 	}
-	
-    //UE1
+
+	//UE1
 	tunnels.ip_gtp[0].tunnel.upf_ipv4 = C.uint32_t(upf)
 	ip = net.ParseIP(ue1str)
 	ipu, err := shmclient.IPv4ToInt(ip)
@@ -163,11 +197,11 @@ func configTunnels(tunnels *C.dfxp_shm_ip_gtps_t) error {
 		return err
 	}
 	tunnels.ip_gtp[0].tunnel.id = C.uint32_t(0)
-	tunnels.ip_gtp[0].tunnel.ue_ipv4= C.uint32_t(ipu)
+	tunnels.ip_gtp[0].tunnel.ue_ipv4 = C.uint32_t(ipu)
 	tunnels.ip_gtp[0].tunnel.teid_in = C.uint32_t(10)
 	tunnels.ip_gtp[0].tunnel.teid_out = C.uint32_t(1010)
 
-    //UE2
+	//UE2
 	tunnels.ip_gtp[1].tunnel.id = C.uint32_t(1)
 	tunnels.ip_gtp[1].tunnel.upf_ipv4 = C.uint32_t(upf)
 	ip = net.ParseIP(ue2str)
@@ -175,7 +209,7 @@ func configTunnels(tunnels *C.dfxp_shm_ip_gtps_t) error {
 	if err != nil {
 		return err
 	}
-	tunnels.ip_gtp[1].tunnel.ue_ipv4= C.uint32_t(ipu)
+	tunnels.ip_gtp[1].tunnel.ue_ipv4 = C.uint32_t(ipu)
 	tunnels.ip_gtp[1].tunnel.teid_in = C.uint32_t(11)
 	tunnels.ip_gtp[1].tunnel.teid_out = C.uint32_t(1011)
 
@@ -185,8 +219,8 @@ func configTunnels(tunnels *C.dfxp_shm_ip_gtps_t) error {
 func deleteTunnels(tunnels *C.dfxp_shm_ip_gtps_t) error {
 
 	tunnels.num = C.int(1)
-    ue1str := "10.0.0.1"  
-	//ue2str := "10.0.0.3"  
+	ue1str := "10.0.0.1"
+	//ue2str := "10.0.0.3"
 
 	ue1 := (*C.char)(unsafe.Pointer(&tunnels.ip_gtp[0].address))
 	C.strcpy(ue1, (*C.char)(C.CString(ue1str)))
@@ -194,6 +228,39 @@ func deleteTunnels(tunnels *C.dfxp_shm_ip_gtps_t) error {
 	// ue2 := (*C.char)(unsafe.Pointer(&tunnels.ip_gtp[1].address))
 	// C.strcpy(ue2, (*C.char)(C.CString(ue2str)))
 
-	
 	return nil
+}
+
+func scanConsole(scanner *bufio.Scanner) (string, error) {
+
+	fmt.Print("-> ")
+	scanner.Scan()
+	// Holds the string that scanned
+	text := scanner.Text()
+	if len(text) != 0 {
+		text = strings.Replace(text, "\n", "", -1)
+		fmt.Println(text)
+	} else {
+		return STR_EMPTY, nil
+	}
+	// handle error
+	if scanner.Err() != nil {
+		fmt.Println("Error: ", scanner.Err())
+		return "", scanner.Err()
+	}
+	return text, nil
+}
+
+func usage () {
+	fmt.Println("uage:")
+	fmt.Println("quit- shm-go quit")
+	fmt.Println("1 - DFXP_SHM_CMD_CONFIG_TRAFFIC")
+	fmt.Println("2 - DFXP_SHM_CMD_CONFIG_PORTS")
+	fmt.Println("3 - DFXP_SHM_CMD_START")
+	fmt.Println("4 - DFXP_SHM_CMD_STOP")
+	fmt.Println("5 - DFXP_SHM_CMD_SHUTDOWN")
+	fmt.Println("6 - DFXP_SHM_CMD_ADD_IP_GTP")
+	fmt.Println("7 - DFXP_SHM_CMD_DEL_IP_GTP")
+	fmt.Println("8 - DFXP_SHM_CMD_GET_STATS")
+	fmt.Println("8 - DFXP_SHM_CMD_CLEAR_CONFIG")
 }
