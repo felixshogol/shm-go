@@ -62,6 +62,7 @@ func (shmClient *ShmClient) DumpTraffic(shmcfg *ShmConfig) {
 		logrus.Info("cpu:", C.int(traffic.cpu[i]))
 	}
 	logrus.Infof("cc:%d", int(traffic.cc))
+	logrus.Infof("gtpenable:%t", traffic.gtpu_enable)
 
 }
 
@@ -229,7 +230,7 @@ func (shmclient *ShmClient) ShmWrite(cfg *ShmConfig) error {
 	if shmcfg.cmd == C.DFXP_SHM_CMD_ADD_IP_GTP || shmcfg.cmd == C.DFXP_SHM_CMD_DEL_IP_GTP {
 		shmclient.DumpShmTunnels(shmcfg)
 	}
-	
+
 	ret := C.ShmWrite(shmcfg)
 	if ret != 0 {
 		return fmt.Errorf("ShmWrite failed")

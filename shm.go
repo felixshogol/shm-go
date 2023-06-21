@@ -25,11 +25,14 @@ import (
 )
 
 const (
-	STR_EMPTY = "empty"
-	STR_QUIT  = "quit"
+	STR_EMPTY      = "empty"
+	STR_QUIT       = "quit"
+	STR_GTPENABLE  = "gtpenable"
+	STR_GTPDISABLE = "gtpdisable"
 )
 
 var shmCfg = shmclient.ShmConfig{}
+var gtpEnable bool = false
 
 func main() {
 	var err error
@@ -58,15 +61,22 @@ func main() {
 		}
 		if text == STR_EMPTY {
 			logrus.Warn("empty line")
-			usage ()
+			usage()
 			continue
 		}
 		if text == STR_QUIT {
 			logrus.Warn("shm-go quit")
-			
 			return
 		}
+		if text == STR_GTPENABLE {
+			gtpEnable = true
+			continue
+		}
 
+		if text == STR_GTPDISABLE {
+			gtpEnable = false
+			continue
+		}
 		cmd, err := strconv.Atoi(text)
 
 		if err != nil {
@@ -102,7 +112,7 @@ func configShm(client *shmclient.ShmClient, cmd int, shmcfg *shmclient.ShmConfig
 	switch shmcmd {
 	case C.DFXP_SHM_CMD_CONFIG_TRAFFIC:
 		traffic := (*C.dfxp_traffic_config_t)(unsafe.Pointer(&cfg.cfgTraffic))
-		err := configTraffic(traffic)
+		err := configTraffic(traffic,gtpEnable)
 		if err != nil {
 			return err
 		}
@@ -138,7 +148,7 @@ func configShm(client *shmclient.ShmClient, cmd int, shmcfg *shmclient.ShmConfig
 	return nil
 }
 
-func configTraffic(traffic *C.dfxp_traffic_config_t) error {
+func configTraffic(traffic *C.dfxp_traffic_config_t, gtpenable bool) error {
 	//required
 	traffic.duration = C.int(120) // seconds
 	traffic.server = C.bool(false)
@@ -149,6 +159,11 @@ func configTraffic(traffic *C.dfxp_traffic_config_t) error {
 	traffic.cpu_num = C.int(1)
 	traffic.lport_min = C.int(2020)
 	traffic.lport_max = C.int(2030)
+	if gtpenable {
+		traffic.gtpu_enable = true
+	} else {
+		traffic.gtpu_enable = false
+	}
 
 	return nil
 }
@@ -251,8 +266,10 @@ func scanConsole(scanner *bufio.Scanner) (string, error) {
 	return text, nil
 }
 
-func usage () {
+func usage() {
 	fmt.Println("uage:")
+	fmt.Println("gtpenable - enable gtp")
+	fmt.Println("gtpdisable - disable gtp")
 	fmt.Println("quit- shm-go quit")
 	fmt.Println("1 - DFXP_SHM_CMD_CONFIG_TRAFFIC")
 	fmt.Println("2 - DFXP_SHM_CMD_CONFIG_PORTS")
