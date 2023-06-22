@@ -176,6 +176,9 @@ func (shmClient *ShmClient) ShmRunCmd(cmd int, cfg *ShmConfig) error {
 	case C.DFXP_SHM_CMD_DEL_IP_GTP:
 		cfg.Cmd = int(C.DFXP_SHM_CMD_DEL_IP_GTP)
 		return shmClient.ShmWrite(cfg)
+	case C.DFXP_SHM_CMD_DEL_ALL_GTP:
+		cfg.Cmd = int(C.DFXP_SHM_CMD_DEL_ALL_GTP)
+		return shmClient.ShmWrite(cfg)
 	case C.DFXP_SHM_CMD_GET_STATS:
 		cfg.Cmd = int(C.DFXP_SHM_CMD_GET_STATS)
 		return shmClient.ShmWrite(cfg)

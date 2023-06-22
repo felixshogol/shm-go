@@ -25,14 +25,17 @@ import (
 )
 
 const (
+	// possible commands
 	STR_EMPTY      = "empty"
 	STR_QUIT       = "quit"
 	STR_GTPENABLE  = "gtpenable"
 	STR_GTPDISABLE = "gtpdisable"
+	STR_TCP        = "tcp"
+	STR_UDP        = "udp"
 )
 
 var shmCfg = shmclient.ShmConfig{}
-var gtpEnable bool = false
+var gtpEnable bool = true
 var protocol uint8 = 17
 
 func main() {
@@ -93,17 +96,17 @@ func main() {
 			fmt.Println("Error during conversion")
 			continue
 		}
-		err = shmclient.ShmCmdValidation( /**cmdPtr*/ cmd)
+		err = shmclient.ShmCmdValidation(cmd)
 		if err != nil {
 			logrus.Errorf("shm validation failed.Err:%v", err)
 			continue
 		}
-		err = configShm(shmclient /*cmdPtr*/, cmd, &shmCfg)
+		err = configShm(shmclient , cmd, &shmCfg)
 		if err != nil {
 			logrus.Errorf("configShm failed.Err:%v", err)
 			continue
 		}
-		err = shmclient.ShmRunCmd( /**cmdPtr*/ cmd, &shmCfg)
+		err = shmclient.ShmRunCmd(cmd, &shmCfg)
 		if err != nil {
 			logrus.Errorf("Failed to run shm cmd.Err :%v", err)
 			continue
@@ -122,7 +125,7 @@ func configShm(client *shmclient.ShmClient, cmd int, shmcfg *shmclient.ShmConfig
 	switch shmcmd {
 	case C.DFXP_SHM_CMD_CONFIG_TRAFFIC:
 		traffic := (*C.dfxp_traffic_config_t)(unsafe.Pointer(&cfg.cfgTraffic))
-		err := configTraffic(traffic,gtpEnable)
+		err := configTraffic(traffic, gtpEnable)
 		if err != nil {
 			return err
 		}
@@ -145,6 +148,8 @@ func configShm(client *shmclient.ShmClient, cmd int, shmcfg *shmclient.ShmConfig
 	case C.DFXP_SHM_CMD_DEL_IP_GTP:
 		tunnels := (*C.dfxp_shm_ip_gtps_t)(unsafe.Pointer(&cfg.cfgIpGtps))
 		deleteTunnels(tunnels)
+
+ 	case C.DFXP_SHM_CMD_DEL_ALL_GTP:
 
 	case C.DFXP_SHM_CMD_CLEAR_CONFIG:
 		logrus.Info("Clear dfxp config")
@@ -256,6 +261,7 @@ func deleteTunnels(tunnels *C.dfxp_shm_ip_gtps_t) error {
 	return nil
 }
 
+
 func scanConsole(scanner *bufio.Scanner) (string, error) {
 
 	fmt.Print("-> ")
@@ -290,6 +296,7 @@ func usage() {
 	fmt.Println("5 - DFXP_SHM_CMD_SHUTDOWN")
 	fmt.Println("6 - DFXP_SHM_CMD_ADD_IP_GTP")
 	fmt.Println("7 - DFXP_SHM_CMD_DEL_IP_GTP")
-	fmt.Println("8 - DFXP_SHM_CMD_GET_STATS")
-	fmt.Println("8 - DFXP_SHM_CMD_CLEAR_CONFIG")
+	fmt.Println("8 - DFXP_SHM_CMD_DEL_ALL_GTP")
+	fmt.Println("9 - DFXP_SHM_CMD_GET_STATS")
+	fmt.Println("10- DFXP_SHM_CMD_CLEAR_CONFIG")
 }
